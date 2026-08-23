@@ -67,8 +67,9 @@ def send_email(text):
         server.login(SMTP_USER, SMTP_PASS)
         server.sendmail(SMTP_USER, CAPTURE_TO, msg.as_string())
         server.quit()
-    except Exception:
-        pass
+        print("EMAIL SENT OK", flush=True)
+    except Exception as e:
+        print("EMAIL ERROR:", repr(e), flush=True)
 
 
 @app.route("/")
